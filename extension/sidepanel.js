@@ -28,14 +28,60 @@ function updateUI() {
   $('txText').disabled = $('btnSend').disabled = !open;
 }
 
+// Chrome can't show the port picker inside the side panel: requestPort() rejects at once with
+// NotFoundError. If that happens, fall back to a small extension window that can show the picker.
+async function choosePort() {
+  const t0 = performance.now();
+  try {
+    return await navigator.serial.requestPort();
+  } catch (e) {
+    if (e.name !== 'NotFoundError') throw e;
+    if (performance.now() - t0 > 700) return null;   // a real dialog was shown and the user cancelled
+  }
+  return choosePortInWindow();
+}
+
+function choosePortInWindow() {
+  return new Promise(resolve => {
+    let winId = null, done = false;
+    const finish = port => {
+      if (done) return;
+      done = true;
+      chrome.runtime.onMessage.removeListener(onMsg);
+      chrome.windows.onRemoved.removeListener(onClosed);
+      resolve(port);
+    };
+    const onMsg = async msg => {
+      if (msg?.type === 'port-chosen') {
+        const ports = await navigator.serial.getPorts();
+        const same = q => { const a = q.getInfo(), b = msg.info;
+                            return a.usbVendorId === b.usbVendorId && a.usbProductId === b.usbProductId; };
+        finish(ports[msg.index] && same(ports[msg.index]) ? ports[msg.index] : ports.find(same) || null);
+      } else if (msg?.type === 'port-cancelled') {
+        finish(null);
+      } else if (msg?.type === 'port-error') {
+        sys('Port selection failed: ' + msg.message, 'err');
+        finish(null);
+      }
+    };
+    const onClosed = id => { if (id === winId) setTimeout(() => finish(null), 300); };
+    chrome.runtime.onMessage.addListener(onMsg);
+    chrome.windows.onRemoved.addListener(onClosed);
+    chrome.windows.create({ url: 'chooser.html', type: 'popup', width: 420, height: 200, focused: true })
+      .then(w => { winId = w.id; })
+      .catch(e => { sys('Could not open the port chooser: ' + e.message, 'err'); finish(null); });
+  });
+}
+
 async function connect() {
   let p;
   try {
-    p = await navigator.serial.requestPort();   // browser's port-picker dialog
+    p = await choosePort();
   } catch (e) {
-    if (e.name !== 'NotFoundError') sys('Port selection failed: ' + e.message, 'err');  // NotFoundError = cancelled
+    sys('Port selection failed: ' + e.message, 'err');
     return;
   }
+  if (!p) { sys('No port selected.'); return; }
   try {
     await p.open(SERIAL_OPTIONS);
   } catch (e) {

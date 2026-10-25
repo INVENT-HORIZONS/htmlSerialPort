@@ -40,6 +40,7 @@ features back without being asked.
 | `extension/background.js` | Service worker; only sets `openPanelOnActionClick` so the toolbar icon opens the panel. |
 | `extension/sidepanel.html` | Same markup and CSS as the standalone page, loading `sidepanel.js`. |
 | `extension/sidepanel.js` | Same script as the standalone page's inline `<script>`. |
+| `extension/chooser.html`, `chooser.js` | Small popup window that shows Chrome's port picker (see below). |
 | `extension/icons/` | `icon16/32/48/128.png`: white DB-9 connector on the accent blue. |
 
 Conventions:
@@ -50,7 +51,18 @@ Conventions:
 - The two copies are kept identical by hand. **Any change to the page's script or styles must be
   made in both** `serial-terminal.html` and `extension/sidepanel.html` / `sidepanel.js`.
   The only intended differences: the extension's body padding is 10px and the output
-  height is `calc(100vh - 120px)` to suit the narrow side panel.
+  height is `calc(100vh - 120px)` to suit the narrow side panel, and the extension's port
+  selection goes through `choosePort()` (below).
+- **Chrome cannot show the serial port picker inside the side panel**: `requestPort()` there
+  rejects immediately with `NotFoundError`, which looks exactly like a user cancel. So the side
+  panel's `choosePort()` tries `requestPort()` and, if it fails in under 700 ms, calls
+  `choosePortInWindow()`: it opens `chooser.html` with `chrome.windows.create({type: 'popup'})`;
+  the user clicks *Choose serial port…* there, and `chooser.js` sends
+  `{type: 'port-chosen', index, info}` / `'port-cancelled'` / `'port-error'` back via
+  `chrome.runtime.sendMessage` and closes. The panel matches the port in its own `getPorts()`
+  (same extension origin, so the permission is shared) by index, checked against USB VID/PID.
+  Closing the chooser window counts as a cancel.
+- Never silently ignore a failed port selection: always show *No port selected.* or the error.
 - Bump `version` in `manifest.json` when the extension changes.
 - File names are lowercase-hyphenated (`serial-terminal.html`).
 - Keep `README.md` in sync when user-visible behavior or the fixed settings change.
