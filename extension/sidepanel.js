@@ -43,12 +43,12 @@ async function choosePort() {
 
 function choosePortInWindow() {
   return new Promise(resolve => {
-    let winId = null, done = false;
+    let tabId = null, done = false;
     const finish = port => {
       if (done) return;
       done = true;
       chrome.runtime.onMessage.removeListener(onMsg);
-      chrome.windows.onRemoved.removeListener(onClosed);
+      chrome.tabs.onRemoved.removeListener(onClosed);
       resolve(port);
     };
     const onMsg = async msg => {
@@ -60,15 +60,14 @@ function choosePortInWindow() {
       } else if (msg?.type === 'port-cancelled') {
         finish(null);
       } else if (msg?.type === 'port-error') {
-        sys('Port selection failed: ' + msg.message, 'err');
-        finish(null);
+        sys(msg.message, 'err');            // chooser tab stays open showing the same error
       }
     };
-    const onClosed = id => { if (id === winId) setTimeout(() => finish(null), 300); };
+    const onClosed = id => { if (id === tabId) setTimeout(() => finish(null), 300); };
     chrome.runtime.onMessage.addListener(onMsg);
-    chrome.windows.onRemoved.addListener(onClosed);
-    chrome.windows.create({ url: 'chooser.html', type: 'popup', width: 420, height: 200, focused: true })
-      .then(w => { winId = w.id; })
+    chrome.tabs.onRemoved.addListener(onClosed);
+    chrome.tabs.create({ url: 'chooser.html', active: true })
+      .then(t => { tabId = t.id; })
       .catch(e => { sys('Could not open the port chooser: ' + e.message, 'err'); finish(null); });
   });
 }

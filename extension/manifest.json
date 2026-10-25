@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Serial Terminal",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Connect to a controller over USB serial (115200 8N1) from a side panel while you browse.",
   "minimum_chrome_version": "116",
   "permissions": ["sidePanel"],

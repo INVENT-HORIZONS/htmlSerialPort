@@ -40,7 +40,7 @@ features back without being asked.
 | `extension/background.js` | Service worker; only sets `openPanelOnActionClick` so the toolbar icon opens the panel. |
 | `extension/sidepanel.html` | Same markup and CSS as the standalone page, loading `sidepanel.js`. |
 | `extension/sidepanel.js` | Same script as the standalone page's inline `<script>`. |
-| `extension/chooser.html`, `chooser.js` | Small popup window that shows Chrome's port picker (see below). |
+| `extension/chooser.html`, `chooser.js` | Chooser page opened in a normal tab to show Chrome's port picker (see below). |
 | `extension/icons/` | `icon16/32/48/128.png`: white DB-9 connector on the accent blue. |
 
 Conventions:
@@ -56,12 +56,14 @@ Conventions:
 - **Chrome cannot show the serial port picker inside the side panel**: `requestPort()` there
   rejects immediately with `NotFoundError`, which looks exactly like a user cancel. So the side
   panel's `choosePort()` tries `requestPort()` and, if it fails in under 700 ms, calls
-  `choosePortInWindow()`: it opens `chooser.html` with `chrome.windows.create({type: 'popup'})`;
-  the user clicks *Choose serial port…* there, and `chooser.js` sends
+  `choosePortInWindow()`: it opens `chooser.html` in a **normal tab** with `chrome.tabs.create()`.
+  (A `chrome.windows.create({type: 'popup'})` window was tried first and fails the same way as
+  the side panel, so don't go back to it.) The user clicks *Choose serial port…* there, and `chooser.js` sends
   `{type: 'port-chosen', index, info}` / `'port-cancelled'` / `'port-error'` back via
-  `chrome.runtime.sendMessage` and closes. The panel matches the port in its own `getPorts()`
+  `chrome.runtime.sendMessage` and closes its own tab (`chrome.tabs.getCurrent` + `chrome.tabs.remove`). If the picker fails
+  instantly, the tab stays open and shows Chrome's exact error, and the panel shows it too. The panel matches the port in its own `getPorts()`
   (same extension origin, so the permission is shared) by index, checked against USB VID/PID.
-  Closing the chooser window counts as a cancel.
+  Closing the chooser tab counts as a cancel.
 - Never silently ignore a failed port selection: always show *No port selected.* or the error.
 - Bump `version` in `manifest.json` when the extension changes.
 - File names are lowercase-hyphenated (`serial-terminal.html`).
