@@ -4,10 +4,14 @@ Guidance for working on the htmlSerialPort project.
 
 ## What this is
 
-A minimal, single-page serial terminal that runs locally in Chrome or Edge and talks to
-one specific controller over USB serial. The user opens the HTML file directly from disk
-(`file://`), clicks **Connect**, picks the port in the browser's dialog, and exchanges text
-commands with the controller.
+A minimal serial terminal that talks to one specific controller over USB serial, in two forms:
+
+1. **Standalone page** (`serial-terminal.html`): opened directly from disk (`file://`) in Chrome or Edge.
+2. **Chrome extension** (`extension/`): the same terminal in the browser's side panel, so the
+   connection stays open while the user browses other sites.
+
+In both, the user clicks **Connect**, picks the port in the browser's dialog, and exchanges
+text commands with the controller.
 
 The UI is intentionally minimal. The owner explicitly asked for this, so do not add
 features back without being asked.
@@ -19,6 +23,9 @@ features back without being asked.
 - **Web Serial API** (`navigator.serial`): Chromium desktop browsers only (Chrome, Edge).
   Firefox and Safari are unsupported; the page shows a red banner when `navigator.serial`
   is missing.
+- Chrome extension: **Manifest V3**, `chrome.sidePanel` API. Web Serial runs in the side panel
+  page (an extension page), not in the service worker. A popup is deliberately not used,
+  because it closes when focus leaves it and would drop the connection.
 - Uses `TextEncoder` / `TextDecoder` (streaming decode) for UTF-8 text I/O.
 - Version control: Git, hosted at `github.com/INVENT-HORIZONS/htmlSerialPort`, branch `main`.
 
@@ -29,10 +36,22 @@ features back without being asked.
 | `serial-terminal.html` | The whole application: markup, `<style>`, and `<script>` in one file. |
 | `README.md` | Short user-facing instructions and the fixed port settings. |
 | `CLAUDE.md` | This file. |
+| `extension/manifest.json` | Manifest V3: `sidePanel` permission, side panel `sidepanel.html`, Chrome 116+. |
+| `extension/background.js` | Service worker; only sets `openPanelOnActionClick` so the toolbar icon opens the panel. |
+| `extension/sidepanel.html` | Same markup and CSS as the standalone page, loading `sidepanel.js`. |
+| `extension/sidepanel.js` | Same script as the standalone page's inline `<script>`. |
+| `extension/icons/` | `icon16/32/48/128.png`: white DB-9 connector on the accent blue. |
 
 Conventions:
-- Keep everything in `serial-terminal.html`. Do not split out `.css` or `.js` files.
+- Keep the standalone page as one file. Do not split out `.css` or `.js` files.
   The page must work by double-clicking it, with no server.
+- The extension must keep its script in a separate `.js` file: Manifest V3's content security
+  policy blocks inline `<script>`. No remote code or CDN scripts in the extension either.
+- The two copies are kept identical by hand. **Any change to the page's script or styles must be
+  made in both** `serial-terminal.html` and `extension/sidepanel.html` / `sidepanel.js`.
+  The only intended differences: the extension's body padding is 10px and the output
+  height is `calc(100vh - 120px)` to suit the narrow side panel.
+- Bump `version` in `manifest.json` when the extension changes.
 - File names are lowercase-hyphenated (`serial-terminal.html`).
 - Keep `README.md` in sync when user-visible behavior or the fixed settings change.
 
@@ -88,8 +107,11 @@ Top to bottom:
 ## Testing
 
 There is no automated test suite. Before committing, check the script parses
-(e.g. extract the `<script>` body and run `node --check`), then test by hand in Chrome
-with the controller connected.
+(e.g. extract the `<script>` body and run `node --check`; `node --check extension/*.js`),
+validate `manifest.json` as JSON, then test by hand in Chrome with the controller connected.
+For the extension, Playwright's Chromium can load it unpacked (`launchPersistentContext` with
+`--load-extension`, `channel: 'chromium'`) to confirm it loads and `navigator.serial` exists in
+`chrome-extension://<id>/sidepanel.html`. Real port I/O can only be tested on the user's PC.
 
 ## Git
 

@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Serial Terminal",
+  "version": "1.0.0",
+  "description": "Connect to a controller over USB serial (115200 8N1) from a side panel while you browse.",
+  "minimum_chrome_version": "116",
+  "permissions": ["sidePanel"],
+  "background": { "service_worker": "background.js" },
+  "side_panel": { "default_path": "sidepanel.html" },
+  "action": {
+    "default_title": "Open Serial Terminal",
+    "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png" }
+  },
+  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+}

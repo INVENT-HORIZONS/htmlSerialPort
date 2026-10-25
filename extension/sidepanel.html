@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Serial Terminal</title>
+<style>
+  :root {
+    --bg: #f3f3f3; --panel: #ffffff; --border: #c8c8c8; --text: #1b1b1b; --muted: #666;
+    --accent: #0067c0; --accent-text: #fff; --term-bg: #0f1419; --term-text: #d6deeb;
+    --ok: #1a7f37; --err: #c62828;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1e1e1e; --panel: #2a2a2a; --border: #444; --text: #e6e6e6; --muted: #9a9a9a;
+            --accent: #4ca0ff; --accent-text: #000; --term-bg: #0b0e12; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 10px; background: var(--bg); color: var(--text);
+         font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
+  .banner { padding: 10px 12px; border-radius: 6px; background: var(--err); color: #fff; margin-bottom: 12px; display: none; }
+  .bar { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+  button { padding: 7px 16px; font: inherit; border: 1px solid var(--border); border-radius: 4px;
+           background: var(--panel); color: var(--text); cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; min-width: 110px; }
+  button:disabled { opacity: .45; cursor: default; }
+  .status { color: var(--muted); }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--muted); margin-right: 6px; }
+  .dot.on { background: var(--ok); }
+  .spacer { flex: 1; }
+  #output { height: calc(100vh - 120px); min-height: 200px; overflow-y: auto; margin: 0; padding: 10px;
+            background: var(--term-bg); color: var(--term-text); border-radius: 6px;
+            font: 13px/1.35 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; word-break: break-all; }
+  #output .sys { color: #4fa3ff; } #output .err { color: #ff6b6b; } #output .tx { color: #c3e88d; }
+  .send { display: flex; gap: 8px; margin-top: 10px; }
+  .send input { flex: 1; min-width: 0; padding: 6px 8px; font: 13px Consolas, monospace; color: var(--text);
+                background: var(--panel); border: 1px solid var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="banner" id="noSerial">Web Serial is not available in this browser. Use Chrome or Edge on a desktop computer.</div>
+
+<div class="bar">
+  <button id="btnConnect" class="primary">Connect</button>
+  <span class="status"><span class="dot" id="dot"></span><span id="statusText">Disconnected</span></span>
+  <span class="spacer"></span>
+  <button id="btnClear">Clear</button>
+</div>
+
+<pre id="output"></pre>
+
+<div class="send">
+  <input id="txText" type="text" placeholder="Type a command and press Enter" disabled>
+  <button id="btnSend" disabled>Send</button>
+</div>
+
+<script src="sidepanel.js"></script>
+</body>
+</html>
